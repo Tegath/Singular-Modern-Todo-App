@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Task, Habit, Settings as SettingsType, Submission } from '@/types';
 import { PomodoroTimer } from '@/components/PomodoroTimer';
 import { TaskEditor } from '@/components/TaskEditor';
@@ -11,6 +11,7 @@ import { DayEndForm } from '@/components/forms/DayEndForm';
 import { SubmissionHistory } from '@/components/SubmissionHistory';
 import { Button } from '@/components/ui/button';
 import { Edit, Eye } from 'lucide-react';
+import { setCookie, getCookie } from '@/utils/cookies';
 
 interface DashboardLayoutProps {
   tasks: Task[];
@@ -46,6 +47,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [localSubmissions, setLocalSubmissions] = useState<Submission[]>(submissions || []);
 
+  useEffect(() => {
+    const savedSettings = getCookie('userSettings');
+    if (savedSettings) {
+      onSettingsUpdate(savedSettings);
+    }
+  }, []);
+
   const handleAutoStartChange = (value: boolean) => {
     onSettingsUpdate({
       ...settings,
@@ -60,6 +68,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     if (onSubmissionAdd) {
       onSubmissionAdd(submission);
     }
+  };
+
+  const handleSettingsUpdate = (newSettings: SettingsType) => {
+    setCookie('userSettings', newSettings);
+    onSettingsUpdate(newSettings);
   };
 
   return (
@@ -102,7 +115,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
             <DayTracker
               settings={settings}
-              onSettingsUpdate={onSettingsUpdate}
+              onSettingsUpdate={handleSettingsUpdate}
               onOpenDayStart={() => setIsDayStartOpen(true)}
               onOpenDayEnd={() => setIsDayEndOpen(true)}
             />
@@ -134,7 +147,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <HabitTracker 
                 habits={settings.habits}
                 onHabitUpdate={(newHabits) => {
-                  onSettingsUpdate({
+                  handleSettingsUpdate({
                     ...settings,
                     habits: newHabits
                   });
@@ -148,7 +161,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <div className="fixed bottom-6 right-6">
           <SettingsButton
             settings={settings}
-            onSettingsUpdate={onSettingsUpdate}
+            onSettingsUpdate={handleSettingsUpdate}
           />
         </div>
 
