@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { playSound } from '@/utils/playSound';
 
 interface Habit {
   id: string;
@@ -19,9 +20,13 @@ export const HabitTracker: React.FC<{
   const toggleHabitDay = (habitId: string, dayIndex: number) => {
     const newHabits = habits.map(habit => {
       if (habit.id === habitId) {
-        const newCompletedDays = habit.completedDays.includes(dayIndex)
-          ? habit.completedDays.filter(d => d !== dayIndex)
-          : [...habit.completedDays, dayIndex];
+        const isCompleting = !habit.completedDays.includes(dayIndex);
+        if (isCompleting) {
+          playSound('notification.mp3');
+        }
+        const newCompletedDays = isCompleting
+          ? [...habit.completedDays, dayIndex]
+          : habit.completedDays.filter(d => d !== dayIndex);
         return { ...habit, completedDays: newCompletedDays };
       }
       return habit;

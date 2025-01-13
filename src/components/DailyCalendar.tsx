@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Task } from '../types';
+import { Task, Submission } from '../types';
 import { Switch } from './ui/switch';
 import { cn } from '@/lib/utils';
 import { TimeMarker } from './calendar/TimeMarker';
@@ -106,7 +106,11 @@ export const DailyCalendar: React.FC<DailyCalendarProps> = ({
               <Switch
                 checked={focusMode}
                 onCheckedChange={setFocusMode}
-                className="data-[state=checked]:bg-blue-500"
+                className={cn(
+                  "data-[state=checked]:bg-blue-500",
+                  "data-[state=unchecked]:bg-gray-200",
+                  "data-[state=unchecked]:hover:bg-gray-300"
+                )}
               />
             </div>
           </div>

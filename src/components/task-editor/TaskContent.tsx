@@ -1,32 +1,44 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
+import { playSound } from '@/utils/playSound';
+import ReactMarkdown from 'react-markdown';
+import { cn } from '@/lib/utils';
 
 interface TaskContentProps {
   content: string;
   onContentChange: (content: string) => void;
   onLineEdit: (index: number, newText: string) => void;
   onCheckboxChange: (index: number, checked: boolean) => void;
+  isPreviewMode?: boolean;
 }
 
 export const TaskContent = ({ 
   content, 
   onLineEdit, 
   onCheckboxChange,
-  onContentChange 
+  onContentChange,
+  isPreviewMode = false
 }: TaskContentProps) => {
   const lines = content.split('\n');
   const checkboxPattern = /^(\s*)-\s*\[([ x])\]\s*(.+)$/;
   const contentEditableRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [completionTimes, setCompletionTimes] = useState<{[key: number]: number}>({});
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLSpanElement>, index: number, indent: string, isCheckbox: boolean) => {
-    const newLines = [...lines];
-    const currentLine = newLines[index];
-
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      // Create new checkbox with current indentation
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLSpanElement>, index: number) => {
+    if (e.key === 'Backspace' && !e.currentTarget.textContent?.trim()) {
       e.preventDefault();
-      const newLine = `${indent}- [ ] `;
+      const newLines = [...lines];
+      newLines.splice(index, 1);
+      onContentChange(newLines.join('\n'));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const currentLine = lines[index];
+      const match = currentLine.match(checkboxPattern);
+      const indent = match ? match[1] : '';
+      const newLine = match ? `${indent}- [ ] ` : '';
+      
+      const newLines = [...lines];
       newLines.splice(index + 1, 0, newLine);
       onContentChange(newLines.join('\n'));
       
@@ -34,97 +46,144 @@ export const TaskContent = ({
         const nextRef = contentEditableRefs.current[index + 1];
         if (nextRef) {
           nextRef.focus();
-          const range = document.createRange();
-          range.selectNodeContents(nextRef);
-          range.collapse(false);
-          const selection = window.getSelection();
-          selection?.removeAllRanges();
-          selection?.addRange(range);
-        }
-      }, 0);
-      return;
-    }
-
-    if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-      e.preventDefault();
-      const selection = window.getSelection();
-      const range = document.createRange();
-      range.selectNodeContents(e.currentTarget);
-      selection?.removeAllRanges();
-      selection?.addRange(range);
-      return;
-    }
-
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      // If it's a checkbox line, create new checkbox, otherwise create normal line
-      const newLine = isCheckbox ? `${indent}- [ ] ` : '';
-      newLines.splice(index + 1, 0, newLine);
-      onContentChange(newLines.join('\n'));
-      
-      setTimeout(() => {
-        const nextRef = contentEditableRefs.current[index + 1];
-        if (nextRef) {
-          nextRef.focus();
-          const range = document.createRange();
-          range.selectNodeContents(nextRef);
-          range.collapse(false);
-          const selection = window.getSelection();
-          selection?.removeAllRanges();
-          selection?.addRange(range);
         }
       }, 0);
     } else if (e.key === 'Tab') {
       e.preventDefault();
+      const currentLine = lines[index];
+      const newLines = [...lines];
+      
       if (e.shiftKey) {
-        // Un-indent
+        // Unindent: Remove two spaces from the start if they exist
         if (currentLine.startsWith('  ')) {
           newLines[index] = currentLine.slice(2);
           onContentChange(newLines.join('\n'));
         }
-      } else if (isCheckbox) {
-        // Regular indent for checkboxes
-        newLines[index] = `  ${currentLine}`;
-        onContentChange(newLines.join('\n'));
       } else {
-        // Create new checkbox when pressing Tab on regular text
-        newLines[index] = `${indent}- [ ] ${currentLine}`;
+        // Check if we're on a checkbox line
+        const isCheckbox = checkboxPattern.test(currentLine);
+        if (isCheckbox) {
+          // Just add indentation
+          newLines[index] = '  ' + currentLine;
+        } else {
+          // Create new checkbox
+          const indent = currentLine.match(/^(\s*)/)?.[1] || '';
+          newLines[index] = `${indent}- [ ] ${currentLine.trim()}`;
+        }
         onContentChange(newLines.join('\n'));
-        
-        setTimeout(() => {
-          const ref = contentEditableRefs.current[index];
-          if (ref) {
-            ref.focus();
-            const range = document.createRange();
-            range.selectNodeContents(ref);
-            range.collapse(false);
-            const selection = window.getSelection();
-            selection?.removeAllRanges();
-            selection?.addRange(range);
-          }
-        }, 0);
-      }
-    } else if (e.key === 'Backspace') {
-      if (!e.currentTarget.textContent?.trim()) {
-        e.preventDefault();
-        newLines.splice(index, 1);
-        onContentChange(newLines.join('\n'));
-        
-        setTimeout(() => {
-          const prevRef = contentEditableRefs.current[index - 1];
-          if (prevRef) {
-            prevRef.focus();
-            const range = document.createRange();
-            range.selectNodeContents(prevRef);
-            range.collapse(false);
-            const selection = window.getSelection();
-            selection?.removeAllRanges();
-            selection?.addRange(range);
-          }
-        }, 0);
       }
     }
   };
+
+  const findNextUnchecked = (lines: string[], currentIndex: number): number | null => {
+    let firstUnchecked = -1;
+    for (let i = 0; i < lines.length; i++) {
+      const match = lines[i].match(checkboxPattern);
+      if (match && match[2] === ' ') {
+        if (firstUnchecked === -1) {
+          firstUnchecked = i;
+        }
+      }
+    }
+    return firstUnchecked === -1 ? null : firstUnchecked;
+  };
+
+  const handleCheckboxChange = (index: number, checked: boolean) => {
+    if (checked) {
+      playSound('notification.mp3');
+    }
+    onCheckboxChange(index, checked);
+  };
+
+  if (isPreviewMode) {
+    return (
+      <div 
+        ref={containerRef}
+        className="prose prose-sm max-w-none min-h-[200px]"
+        onClick={(e) => {
+          if (e.target === containerRef.current) {
+            onContentChange(content + '\n');
+          }
+        }}
+      >
+        {lines.map((line, index) => {
+          const match = line.match(checkboxPattern);
+          if (match) {
+            const [, indent, checkState, label] = match;
+            const isChecked = checkState === 'x';
+            const nextUncheckedIndex = findNextUnchecked(lines, index);
+            const isNextUnchecked = index === nextUncheckedIndex;
+
+            return (
+              <div 
+                key={index}
+                className={cn(
+                  "flex items-start gap-3 -mx-2 px-2 py-1.5 rounded-lg group/item",
+                  "hover:bg-white/80 transition-all duration-200"
+                )}
+                style={{ marginLeft: indent.length * 12 }}
+              >
+                <div className="flex items-start gap-3 flex-1">
+                  <Checkbox
+                    checked={isChecked}
+                    onCheckedChange={(checked) => handleCheckboxChange(index, !!checked)}
+                    className="mt-[3px] h-[18px] w-[18px] rounded-[4px] border-2 border-gray-300 
+                      data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500
+                      transition-all duration-200 hover:border-blue-400 cursor-pointer"
+                  />
+                  <div className="flex-1 flex items-center justify-between">
+                    <div className={cn(
+                      "flex-1 inline-flex items-center",
+                      nextUncheckedIndex !== null && index === nextUncheckedIndex && !isChecked && "bg-blue-500 rounded-md px-2 py-0.5"
+                    )}>
+                      <span
+                        ref={el => contentEditableRefs.current[index] = el}
+                        contentEditable
+                        onKeyDown={(e) => handleKeyDown(e, index)}
+                        onBlur={(e) => {
+                          const newText = `${indent}- [${isChecked ? 'x' : ' '}] ${e.target.textContent}`;
+                          onLineEdit(index, newText);
+                        }}
+                        className={cn(
+                          "text-[15px] leading-relaxed tracking-normal outline-none",
+                          isChecked && "line-through text-gray-400",
+                          nextUncheckedIndex !== null && index === nextUncheckedIndex && !isChecked && "text-white font-medium",
+                        )}
+                        suppressContentEditableWarning
+                      >
+                        {label}
+                      </span>
+                    </div>
+                    {isChecked && completionTimes[index] && (
+                      <span className="text-[11px] text-gray-400 italic ml-4">
+                        {completionTimes[index]} minutes
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div key={index} className="py-1">
+              <span
+                ref={el => contentEditableRefs.current[index] = el}
+                contentEditable
+                onKeyDown={(e) => handleKeyDown(e, index)}
+                onBlur={(e) => {
+                  onLineEdit(index, e.target.textContent || '');
+                }}
+                className="outline-none block"
+                suppressContentEditableWarning
+              >
+                {line}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div 
@@ -136,44 +195,52 @@ export const TaskContent = ({
         if (match) {
           const [, indent, checkState, label] = match;
           const isChecked = checkState === 'x';
+          const nextUncheckedIndex = findNextUnchecked(lines, index);
+          const isNextUnchecked = index === nextUncheckedIndex;
+
           return (
             <div 
               key={index} 
-              className="flex items-start gap-3 -mx-2 px-2 py-1.5 rounded-lg hover:bg-white/80 
-                transition-all duration-200 group/item"
+              className="flex items-start gap-3 -mx-2 px-2 py-1.5 rounded-lg
+                hover:bg-white/80 transition-all duration-200 group/item"
               style={{ marginLeft: indent.length * 12 }}
             >
               <Checkbox
                 checked={isChecked}
-                onCheckedChange={(checked) => onCheckboxChange(index, !!checked)}
+                onCheckedChange={(checked) => handleCheckboxChange(index, !!checked)}
                 className="mt-[3px] h-[18px] w-[18px] rounded-[4px] border-2 border-gray-300 
                   data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500
-                  transition-all duration-200 hover:border-blue-400"
+                  transition-all duration-200 hover:border-blue-400 cursor-pointer"
               />
-              <span 
-                ref={el => contentEditableRefs.current[index] = el}
-                className={`
-                  flex-1 transition-all duration-200 text-[15px] leading-relaxed tracking-normal
-                  ${isChecked ? 'line-through text-gray-400' : 'text-gray-700'}
-                  group-hover/item:text-gray-900
-                  outline-none focus:bg-white focus:px-2 -ml-2
-                  whitespace-pre-wrap break-words
-                `}
-                contentEditable
-                suppressContentEditableWarning
-                onBlur={(e) => {
-                  const newText = e.currentTarget.textContent || '';
-                  onLineEdit(index, `${indent}- [${checkState}] ${newText}`);
-                }}
-                onKeyDown={(e) => handleKeyDown(e, index, indent, true)}
-                onPaste={(e) => {
-                  e.preventDefault();
-                  const text = e.clipboardData.getData('text/plain');
-                  document.execCommand('insertText', false, text);
-                }}
-              >
-                {label}
-              </span>
+              <div className="flex-1 flex items-center justify-between">
+                <div className={cn(
+                  "flex-1 inline-flex items-center",
+                  nextUncheckedIndex !== null && index === nextUncheckedIndex && !isChecked && "bg-blue-500 rounded-md px-2 py-0.5"
+                )}>
+                  <span
+                    ref={el => contentEditableRefs.current[index] = el}
+                    contentEditable
+                    onKeyDown={(e) => handleKeyDown(e, index)}
+                    onBlur={(e) => {
+                      const newText = `${indent}- [${isChecked ? 'x' : ' '}] ${e.target.textContent}`;
+                      onLineEdit(index, newText);
+                    }}
+                    className={cn(
+                      "text-[15px] leading-relaxed tracking-normal outline-none",
+                      isChecked && "line-through text-gray-400",
+                      nextUncheckedIndex !== null && index === nextUncheckedIndex && !isChecked && "text-white font-medium",
+                    )}
+                    suppressContentEditableWarning
+                  >
+                    {label}
+                  </span>
+                </div>
+                {isChecked && completionTimes[index] && (
+                  <span className="text-[11px] text-gray-400 italic ml-4">
+                    {completionTimes[index]} minutes
+                  </span>
+                )}
+              </div>
             </div>
           );
         }
@@ -190,7 +257,7 @@ export const TaskContent = ({
               const newText = e.currentTarget.textContent || '';
               onLineEdit(index, newText);
             }}
-            onKeyDown={(e) => handleKeyDown(e, index, '', false)}
+            onKeyDown={(e) => handleKeyDown(e, index)}
             onPaste={(e) => {
               e.preventDefault();
               const text = e.clipboardData.getData('text/plain');

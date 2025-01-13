@@ -9,6 +9,7 @@ import { Edit, Eye } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { TaskTitle } from './task-editor/TaskTitle';
 import { Submission } from '../types';
+import { cn } from '@/lib/utils';
 
 interface TaskEditorProps {
   task: Task | undefined;
@@ -101,8 +102,7 @@ export const TaskEditor: React.FC<TaskEditorProps> = ({
         timestamp: new Date().toISOString(),
         duration: 0,
         completed: true,
-        questions: [],
-        taskContent: task.content
+        questions: []
       };
       onSubmit(submission);
     }
@@ -116,38 +116,47 @@ export const TaskEditor: React.FC<TaskEditorProps> = ({
           onTitleChange={handleTitleChange}
         />
 
-        {isEditing ? (
-          <Textarea
-            value={task.content}
-            onChange={(e) => handleContentChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Task details... (⌘/Ctrl+Enter for new todo, Tab to indent)"
-            className="min-h-[240px] text-[15px] leading-relaxed tracking-normal font-normal 
-              border-none focus:ring-1 focus:ring-blue-200 bg-gray-50/50 p-4 rounded-lg
-              placeholder:text-gray-400"
-            style={{ 
-              fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif'
-            }}
-          />
-        ) : (
-          <TaskContent
-            content={task.content}
-            onContentChange={handleContentChange}
-            onLineEdit={(index, newText) => {
-              const lines = task.content.split('\n');
-              lines[index] = newText;
-              handleContentChange(lines.join('\n'));
-            }}
-            onCheckboxChange={(index, checked) => {
-              const lines = task.content.split('\n');
-              lines[index] = lines[index].replace(
-                /\[([ x])\]/,
-                `[${checked ? 'x' : ' '}]`
-              );
-              handleContentChange(lines.join('\n'));
-            }}
-          />
-        )}
+        <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <div className="text-sm font-medium text-gray-500">Tasks</div>
+            <div className="min-h-[240px] bg-gray-50/50 rounded-lg transition-all duration-300">
+              <TaskContent
+                content={task.content}
+                onContentChange={handleContentChange}
+                onLineEdit={(index, newText) => {
+                  const lines = task.content.split('\n');
+                  lines[index] = newText;
+                  handleContentChange(lines.join('\n'));
+                }}
+                onCheckboxChange={(index, checked) => {
+                  const lines = task.content.split('\n');
+                  lines[index] = lines[index].replace(
+                    /\[([ x])\]/,
+                    `[${checked ? 'x' : ' '}]`
+                  );
+                  handleContentChange(lines.join('\n'));
+                }}
+                isPreviewMode={!isEditing}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-sm font-medium text-gray-500">Notes</div>
+            <Textarea
+              value={task.notes || ''}
+              onChange={(e) => onSave({ ...task, notes: e.target.value })}
+              onKeyDown={handleKeyDown}
+              placeholder="Add your notes here..."
+              className="min-h-[240px] text-[15px] leading-relaxed tracking-normal font-normal 
+                border-none focus:ring-1 focus:ring-blue-200 bg-gray-50/50 p-4 rounded-lg
+                placeholder:text-gray-400"
+              style={{ 
+                fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif'
+              }}
+            />
+          </div>
+        </div>
 
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
           <Button

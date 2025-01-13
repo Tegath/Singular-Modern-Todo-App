@@ -16,9 +16,7 @@ interface PomodoroTimerProps {
     focus: string | null;
   };
   onAutoStartChange: (value: boolean) => void;
-  activeTask?: {
-    title: string;
-  };
+  activeTask?: Partial<Task>;
 }
 
 export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
@@ -98,6 +96,7 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
       }, 1000);
     } else if (timeLeft === 0) {
       setIsRunning(false);
+      
       if (mode === 'work') {
         playSound('complete', notificationSounds?.focus || undefined);
         setIsPostFormOpen(true);
@@ -113,6 +112,7 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
           setIsRunning(true);
         }
       } else {
+        // When break is complete
         playSound('start', notificationSounds?.start || undefined);
         if (mode === 'longBreak') {
           setCurrentCycle(1);
@@ -121,6 +121,10 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
         }
         setMode('work');
         setTimeLeft(workDuration * 60);
+        // Auto-start work session if autoStartBreaks is enabled
+        if (autoStartBreaks) {
+          setIsRunning(true);
+        }
       }
     }
 
@@ -168,18 +172,22 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-gray-900">Focus Time</h2>
             <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
-                <span className={cn(
-                  "text-sm font-medium transition-colors",
-                  autoStartBreaks ? "text-blue-600" : "text-gray-500"
-                )}>
-                  Auto-démarrage
-                </span>
+              <div className="flex items-center gap-2">
                 <Switch
                   checked={autoStartBreaks}
                   onCheckedChange={onAutoStartChange}
-                  className="data-[state=checked]:bg-blue-500"
+                  className={cn(
+                    "data-[state=checked]:bg-blue-500",
+                    "data-[state=unchecked]:bg-gray-200",
+                    "data-[state=unchecked]:hover:bg-gray-300"
+                  )}
                 />
+                <span className={cn(
+                  "text-sm font-medium",
+                  autoStartBreaks ? "text-blue-600" : "text-gray-500"
+                )}>
+                  Auto-start breaks
+                </span>
               </div>
               <div className="text-sm text-gray-500">
                 {currentCycle}/{totalCycles}

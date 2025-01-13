@@ -12,6 +12,7 @@ import { SubmissionHistory } from '@/components/SubmissionHistory';
 import { Button } from '@/components/ui/button';
 import { Edit, Eye } from 'lucide-react';
 import { setCookie, getCookie } from '@/utils/cookies';
+import { cn } from '@/lib/utils';
 
 interface DashboardLayoutProps {
   tasks: Task[];
