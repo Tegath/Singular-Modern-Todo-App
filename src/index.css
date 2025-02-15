@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 211 100% 50%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 211 100% 50%;
+
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-[#e5e7eb];
+  }
+  body {
+    @apply bg-white text-gray-900;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Mac-like transitions */
+.transition-mac {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+/* Frosted glass effect */
+.backdrop-blur-mac {
+  @apply backdrop-blur-xl bg-white/80;
+}
+
+/* Mac-like button */
+.button-mac {
+  @apply rounded-lg bg-[#007AFF] text-white px-4 py-2 text-sm font-medium 
+         hover:bg-[#0071E3] active:bg-[#006EDB] transition-mac
+         disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* Mac-like input */
+.input-mac {
+  @apply rounded-md border border-gray-200/50 bg-white/80 px-3 py-2 text-sm
+         focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 transition-mac;
+}
